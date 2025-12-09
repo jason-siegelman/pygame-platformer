@@ -13,34 +13,64 @@ GRAVITY = 0.8
 FRICTION = 0.9 
 ACCELERATION = 1.0
 JUMP_STRENGTH = -18
+TILE_SIZE = 50
 
-# --- Player Animations ---
+# --- Global Variables ---
+score = 0
+game_state = 'PLAYING'
+player_rect = pygame.Rect(100, 100, 40, 60)
+x_pos = float(player_rect.x)
+y_pos = float(player_rect.y)
+x_speed = 0
+y_speed = 0
+x_accel = 0
+can_jump = False
+facing_right = True
+
+# --- Camera Variables ---
+scroll_x = 0
+scroll_y = 0
+
+# --- Animations ---
+frame_speed = 0.1
+frame_index = 0
+
+# Player Run Animation
 char_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
 player_run_image_a = pygame.image.load(char_image_path + 'character_beige_walk_a.png').convert_alpha()
 player_run_image_b = pygame.image.load(char_image_path + 'character_beige_walk_b.png').convert_alpha()
 run_animation = [player_run_image_b, player_run_image_a]
-frame_speed = 0.1
-frame_index = 0
+
+# Coin Image Animation
+coin_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/coin_gold.png'
+coin_side_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/coin_gold_side.png'
+coin_image_original = pygame.image.load(coin_image_path).convert_alpha()
+coin_side_image_original = pygame.image.load(coin_side_image_path).convert_alpha()
+coin_image = pygame.transform.smoothscale(coin_image_original, (TILE_SIZE, TILE_SIZE))
+coin_side_image = pygame.transform.smoothscale(coin_side_image_original, (TILE_SIZE, TILE_SIZE))
+coin_animation = [coin_image, coin_side_image]
 
 # --- Level Design ---
-walls = [
-    pygame.Rect(0, 550, 2400, 50),    # Huge Floor (3 screens wide)
-    pygame.Rect(0, 0, 50, 600),       # Left Wall Boundary
-    pygame.Rect(2350, 0, 50, 600),    # Far Right Wall Boundary
-    
-    # Obstacle Course
-    pygame.Rect(300, 400, 200, 20),
-    pygame.Rect(600, 300, 20, 100),   # Tall wall
-    pygame.Rect(700, 450, 200, 20),
-    pygame.Rect(1000, 350, 100, 20),
-    pygame.Rect(1200, 250, 100, 20),  # High platform
-    pygame.Rect(1400, 500, 50, 50),   # Block
-    pygame.Rect(1600, 400, 200, 20),  
-    pygame.Rect(1900, 300, 50, 20),
-    pygame.Rect(2000, 200, 50, 20),
-    pygame.Rect(2200, 100, 100, 20),
-    
+# Each character represents a 50x50 tile
+# 16 rows x 48 columns
+level_map = [
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
+    "W                                              W",
+    "W                                              W",
+    "W                                              W",
+    "W       C                    C                 W",
+    "W      WWW                  WWW                W",
+    "W             P                                W",
+    "W            WWW                               W",
+    "W                                              W",
+    "W      W            C     W          W         W",
+    "W     WW           WWW    WW        WW         W",
+    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
 ]
+
+# Initialize Walls and Coins
+walls = []
+coins = []
 
 def reset_level():
     global score, game_state, player_rect, x_pos, y_pos, x_speed, y_speed, x_accel, can_jump, facing_right, scroll_x, scroll_y, coins
@@ -63,14 +93,28 @@ def reset_level():
     scroll_x = 0
     scroll_y = 0
 
-    # --- Coin List ---
-    coins = [
-        pygame.Rect(350, 360, 20, 20),
-        pygame.Rect(750, 410, 20, 20),
-        pygame.Rect(1250, 210, 20, 20),
-        pygame.Rect(1650, 360, 20, 20),
-        pygame.Rect(1950, 260, 20, 20),
-    ]
+    # --- Level Setup ---
+    walls.clear()
+    coins.clear()
+
+    # Parse level map to create walls and coins
+    for row_index, row in enumerate(level_map): # Iterate through each row
+        for col_index, tile in enumerate(row): # Iterate through each character in the row
+            
+            # Calculate the x, y position of the tile
+            x = col_index * TILE_SIZE 
+            y = row_index * TILE_SIZE
+            
+            # Create walls, coins, and set player start position
+            if tile == 'W':
+                walls.append(pygame.Rect(x, y, TILE_SIZE, TILE_SIZE))
+            elif tile == 'C':
+                coins.append(pygame.Rect(x , y , TILE_SIZE, TILE_SIZE))
+            elif tile == 'P':
+                player_rect.x = x
+                player_rect.y = y
+                x_pos = float(player_rect.x)
+                y_pos = float(player_rect.y)
 
 reset_level()
 
@@ -196,9 +240,11 @@ while running:
         screen.blit(current_image, player_draw_rect)
 
         # Draw coins relative to Camera
+        coin_image = coin_animation[int((pygame.time.get_ticks() / 300) % len(coin_animation))]
         for coin in coins:
             draw_rect = pygame.Rect(int(coin.x - scroll_x), int(coin.y - scroll_y), coin.width, coin.height)
-            pygame.draw.ellipse(screen, (255, 223, 0), draw_rect)
+            screen.blit(coin_image, draw_rect)
+            # pygame.draw.ellipse(screen, (255, 223, 0), draw_rect)
 
         pygame.display.flip()
         clock.tick(60)
