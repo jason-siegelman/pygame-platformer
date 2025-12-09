@@ -6,6 +6,7 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
+score = 0
 
 # --- Constants ---
 GRAVITY = 0.8
@@ -21,38 +22,21 @@ x_speed = 0
 y_speed = 0
 x_accel = 0
 can_jump = False
+facing_right = True
 
 # --- Player Animations ---
-sprite_sheet_image = pygame.image.load('assets/raptor_sprite_sheet_v4.png').convert_alpha()
+char_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
+player_run_image_a = pygame.image.load(char_image_path + 'character_beige_walk_a.png').convert_alpha()
+player_run_image_b = pygame.image.load(char_image_path + 'character_beige_walk_b.png').convert_alpha()
+run_animation = [player_run_image_b, player_run_image_a]
 frame_speed = 0.1
 frame_index = 0
-
-# def get_image(frame_number, width, height, scale, color):
-#     # Calculate the offset and create the image
-#     x_offset = width * frame_number
-#     frame_rect = pygame.Rect(x_offset, 0, width, height)
-#     image = sprite_sheet_image.subsurface(frame_rect)
-    
-#     # Resize the image and remove the background
-#     image = pygame.transform.scale(image, (int(width * scale), int(height * scale)))
-#     image.set_colorkey(color)
-    
-#     # Return the image
-#     return image
-
-char_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
-
-run_animation = [char_image_path + 'character_beige_walk_a.png', char_image_path + 'character_beige_walk_b.png']
-
-# for frame_index in range(0, 4):
-#     run_animation.append(get_image(frame_index, 704, 768, 0.15, (255, 255, 255)))
 
 # --- Camera Variables ---
 scroll_x = 0
 scroll_y = 0
 
-# --- Massive Level Design ---
-# I added walls much further out (up to 2000px)
+# --- Level Design ---
 walls = [
     pygame.Rect(0, 550, 2400, 50),    # Huge Floor (3 screens wide)
     pygame.Rect(0, 0, 50, 600),       # Left Wall Boundary
@@ -67,6 +51,14 @@ walls = [
     pygame.Rect(1400, 500, 50, 50),   # Block
     pygame.Rect(1600, 400, 200, 20),  
     pygame.Rect(1900, 300, 50, 20),
+]
+
+coins = [
+    pygame.Rect(350, 360, 20, 20),
+    pygame.Rect(750, 410, 20, 20),
+    pygame.Rect(1250, 210, 20, 20),
+    pygame.Rect(1650, 360, 20, 20),
+    pygame.Rect(1950, 260, 20, 20),
 ]
 
 running = True
@@ -93,11 +85,18 @@ while running:
 
     # 3. Physics Engine
     
-    # X Movement
+    # Movement - X Axis
     x_speed += x_accel
     x_pos += x_speed
     player_rect.x = x_pos
+
+    # Update facing direction
+    if x_speed > 0:
+        facing_right = True
+    elif x_speed < 0:
+        facing_right = False
     
+    # Collision Detection - X Axis
     for wall_rect in walls:
         if player_rect.colliderect(wall_rect):
             if x_speed > 0: 
@@ -109,11 +108,12 @@ while running:
                 x_speed = 0
                 x_pos = player_rect.x
 
-    # Y Movement
+    # Movement - Y Axis
     y_speed += GRAVITY
     y_pos += y_speed
     player_rect.y = y_pos
-    
+
+    # Collision Detection - Y Axis
     can_jump = False 
     for wall_rect in walls:
         if player_rect.colliderect(wall_rect):
@@ -127,7 +127,15 @@ while running:
                 y_speed = 0
                 y_pos = player_rect.y
 
+    # Collect Coins
+    for coin in coins[:]:
+        if player_rect.colliderect(coin):
+            coins.remove(coin)
+            score += 1
+            print(f"Score: {score}")
+
     # 4. Camera Logic
+
     # Center the camera on the player
     # (Goal: Player Center - Screen Center)
     target_x = player_rect.centerx - (SCREEN_WIDTH // 2)
@@ -138,6 +146,8 @@ while running:
     scroll_y += (target_y - scroll_y) * 0.1
 
     # 5. Drawing
+
+    # Clear Screen
     screen.fill((30, 30, 30))
     
     # Draw Walls relative to Camera
@@ -145,19 +155,31 @@ while running:
         # Create a temp rect for drawing only
         draw_rect = pygame.Rect(int(wall.x - scroll_x), int(wall.y - scroll_y), wall.width, wall.height)
         pygame.draw.rect(screen, (100, 200, 100), draw_rect)
-        
+
     # Update Animation Frame
-    frame_index += frame_speed
-    if frame_index >= len(run_animation):
-        frame_index = 0
+    if abs(x_speed) > 0.5:
+        frame_index += frame_speed
+        if frame_index >= len(run_animation):
+            frame_index = 0
+    else:
+        frame_index = 0  # Reset to first frame when not moving
 
     # Calculate Player Draw Position relative to Camera
     current_image = run_animation[int(frame_index)]
     player_draw_rect = current_image.get_rect()
     player_draw_rect.midbottom = (int(player_rect.centerx - scroll_x), int(player_rect.bottom - scroll_y))
 
+    # Flip the image based on facing direction
+    if not facing_right:
+        current_image = pygame.transform.flip(current_image, True, False)
+
     # Draw the current frame of the run animation
-    screen.blit(run_animation[int(frame_index)], player_draw_rect)
+    screen.blit(current_image, player_draw_rect)
+
+    # Draw coins relative to Camera
+    for coin in coins:
+        draw_rect = pygame.Rect(int(coin.x - scroll_x), int(coin.y - scroll_y), coin.width, coin.height)
+        pygame.draw.ellipse(screen, (255, 223, 0), draw_rect)
 
     pygame.display.flip()
     clock.tick(60)
