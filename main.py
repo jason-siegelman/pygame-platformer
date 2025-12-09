@@ -6,8 +6,6 @@ SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
-score = 0
-game_state = 'PLAYING'
 game_font = pygame.font.Font(None, 74) # Default font, size 74
 
 # --- Constants ---
@@ -16,16 +14,6 @@ FRICTION = 0.9
 ACCELERATION = 1.0
 JUMP_STRENGTH = -18
 
-# --- Player Variables ---
-player_rect = pygame.Rect(100, 100, 40, 60)
-x_pos = float(player_rect.x)
-y_pos = float(player_rect.y)
-x_speed = 0
-y_speed = 0
-x_accel = 0
-can_jump = False
-facing_right = True
-
 # --- Player Animations ---
 char_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
 player_run_image_a = pygame.image.load(char_image_path + 'character_beige_walk_a.png').convert_alpha()
@@ -33,10 +21,6 @@ player_run_image_b = pygame.image.load(char_image_path + 'character_beige_walk_b
 run_animation = [player_run_image_b, player_run_image_a]
 frame_speed = 0.1
 frame_index = 0
-
-# --- Camera Variables ---
-scroll_x = 0
-scroll_y = 0
 
 # --- Level Design ---
 walls = [
@@ -58,13 +42,37 @@ walls = [
     
 ]
 
-coins = [
-    pygame.Rect(350, 360, 20, 20),
-    pygame.Rect(750, 410, 20, 20),
-    pygame.Rect(1250, 210, 20, 20),
-    pygame.Rect(1650, 360, 20, 20),
-    pygame.Rect(1950, 260, 20, 20),
-]
+def reset_level():
+    global score, game_state, player_rect, x_pos, y_pos, x_speed, y_speed, x_accel, can_jump, facing_right, scroll_x, scroll_y, coins
+
+    # --- Game Variables ---
+    score = 0
+    game_state = 'PLAYING'
+
+    # --- Player Variables ---
+    player_rect = pygame.Rect(100, 100, 40, 60)
+    x_pos = float(player_rect.x)
+    y_pos = float(player_rect.y)
+    x_speed = 0
+    y_speed = 0
+    x_accel = 0
+    can_jump = False
+    facing_right = True
+
+    # --- Camera Variables ---
+    scroll_x = 0
+    scroll_y = 0
+
+    # --- Coin List ---
+    coins = [
+        pygame.Rect(350, 360, 20, 20),
+        pygame.Rect(750, 410, 20, 20),
+        pygame.Rect(1250, 210, 20, 20),
+        pygame.Rect(1650, 360, 20, 20),
+        pygame.Rect(1950, 260, 20, 20),
+    ]
+
+reset_level()
 
 running = True
 while running:
@@ -73,9 +81,10 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
+    # 2. Input Handling
+    keys = pygame.key.get_pressed()
+
     if game_state == 'PLAYING':
-        # 2. Input Handling
-        keys = pygame.key.get_pressed()
         
         x_speed *= FRICTION
         x_accel = 0
@@ -202,7 +211,10 @@ while running:
         game_over_text = game_font.render("GAME OVER", True, (255, 0, 0))
         text_rect = game_over_text.get_rect(center=(SCREEN_WIDTH // 2, SCREEN_HEIGHT // 2))
         screen.blit(game_over_text, text_rect)
-        
+
+        if keys[pygame.K_r]:
+            reset_level()
+
         pygame.display.flip()
         clock.tick(60)
 
