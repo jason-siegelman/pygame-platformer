@@ -1,4 +1,5 @@
 import pygame
+import os
 
 # --- Setup ---
 pygame.init()
@@ -34,21 +35,26 @@ scroll_y = 0
 # --- Animations ---
 frame_speed = 0.1
 frame_index = 0
+BASE_CHAR_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
+BASE_TILE_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/'
+
+# --- Load Images Function ---
+def load_image(path, filenames, resize=None):
+    images = []
+    for filename in filenames:
+        image = pygame.image.load(os.path.join(path, filename)).convert_alpha()
+        if resize:
+            image = pygame.transform.smoothscale(image, resize)
+        images.append(image)
+    return images
 
 # Player Run Animation
-char_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
-player_run_image_a = pygame.image.load(char_image_path + 'character_beige_walk_a.png').convert_alpha()
-player_run_image_b = pygame.image.load(char_image_path + 'character_beige_walk_b.png').convert_alpha()
-run_animation = [player_run_image_b, player_run_image_a]
+player_run_files = ['character_beige_walk_b.png', 'character_beige_walk_a.png']
+run_animation = load_image(BASE_CHAR_PATH, player_run_files)
 
 # Coin Image Animation
-coin_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/coin_gold.png'
-coin_side_image_path = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/coin_gold_side.png'
-coin_image_original = pygame.image.load(coin_image_path).convert_alpha()
-coin_side_image_original = pygame.image.load(coin_side_image_path).convert_alpha()
-coin_image = pygame.transform.smoothscale(coin_image_original, (TILE_SIZE, TILE_SIZE))
-coin_side_image = pygame.transform.smoothscale(coin_side_image_original, (TILE_SIZE, TILE_SIZE))
-coin_animation = [coin_image, coin_side_image]
+coin_image_files = ['coin_gold.png', 'coin_gold_side.png']
+coin_animation = load_image(BASE_TILE_PATH, coin_image_files, (TILE_SIZE, TILE_SIZE))
 
 # --- Level Design ---
 # Each character represents a 50x50 tile
