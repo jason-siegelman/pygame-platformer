@@ -1,20 +1,14 @@
 import pygame
 import os
+from settings import *
+from utils import load_image
+
 
 # --- Setup ---
 pygame.init()
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 clock = pygame.time.Clock()
 game_font = pygame.font.Font(None, 74) # Default font, size 74
-
-# --- Constants ---
-GRAVITY = 0.8
-FRICTION = 0.9 
-ACCELERATION = 1.0
-JUMP_STRENGTH = -18
-TILE_SIZE = 50
 
 # --- Global Variables ---
 score = 0
@@ -33,46 +27,18 @@ scroll_x = 0
 scroll_y = 0
 
 # --- Animations ---
-frame_speed = 0.1
-frame_index = 0
-BASE_CHAR_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
-BASE_TILE_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/'
-
-# --- Load Images Function ---
-def load_image(path, filenames, resize=None):
-    images = []
-    for filename in filenames:
-        image = pygame.image.load(os.path.join(path, filename)).convert_alpha()
-        if resize:
-            image = pygame.transform.smoothscale(image, resize)
-        images.append(image)
-    return images
 
 # Player Run Animation
+player_frame_speed = 0.1
+player_frame_index = 0
 player_run_files = ['character_beige_walk_b.png', 'character_beige_walk_a.png']
 run_animation = load_image(BASE_CHAR_PATH, player_run_files)
 
 # Coin Image Animation
+coin_frame_index = 0
+coin_frame_speed = 0.1
 coin_image_files = ['coin_gold.png', 'coin_gold_side.png']
 coin_animation = load_image(BASE_TILE_PATH, coin_image_files, (TILE_SIZE, TILE_SIZE))
-
-# --- Level Design ---
-# Each character represents a 50x50 tile
-# 16 rows x 48 columns
-level_map = [
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-    "W                                              W",
-    "W                                              W",
-    "W                                              W",
-    "W       C                    C                 W",
-    "W      WWW                  WWW                W",
-    "W             P                                W",
-    "W            WWW                               W",
-    "W                                              W",
-    "W      W            C     W          W         W",
-    "W     WW           WWW    WW        WW         W",
-    "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
-]
 
 # Initialize Walls and Coins
 walls = []
@@ -104,7 +70,7 @@ def reset_level():
     coins.clear()
 
     # Parse level map to create walls and coins
-    for row_index, row in enumerate(level_map): # Iterate through each row
+    for row_index, row in enumerate(LEVEL_MAP): # Iterate through each row
         for col_index, tile in enumerate(row): # Iterate through each character in the row
             
             # Calculate the x, y position of the tile
@@ -211,8 +177,15 @@ while running:
         target_y = player_rect.centery - (SCREEN_HEIGHT // 2)
 
         # Lerp the camera position for smooth movement
-        scroll_x += (target_x - scroll_x) * 0.1
-        scroll_y += (target_y - scroll_y) * 0.1
+        scroll_x += (target_x - scroll_x) * 0.2
+        scroll_y += (target_y - scroll_y) * 0.2
+
+        # Snap if close (The Anti-Jitter Fix)
+        if abs(target_x - scroll_x) < 1:
+            scroll_x = target_x
+            
+        if abs(target_y - scroll_y) < 1:
+            scroll_y = target_y
 
         # 5. Drawing
 
@@ -220,23 +193,37 @@ while running:
         screen.fill((30, 30, 30))
         
         # Draw Walls relative to Camera
+        # for wall in walls:
+        #     # Create a temp rect for drawing only
+        #     draw_rect = pygame.Rect(int(wall.x - scroll_x), int(wall.y - scroll_y), wall.width, wall.height)
+        #     pygame.draw.rect(screen, (100, 200, 100), draw_rect)
         for wall in walls:
-            # Create a temp rect for drawing only
-            draw_rect = pygame.Rect(int(wall.x - scroll_x), int(wall.y - scroll_y), wall.width, wall.height)
-            pygame.draw.rect(screen, (100, 200, 100), draw_rect)
+            draw_x = round(wall.x - scroll_x)
+            draw_y = round(wall.y - scroll_y)
+            draw_rect = pygame.Rect(draw_x, draw_y, wall.width, wall.height)
+            pygame.draw.rect(screen, COLOR_WALL, draw_rect)
 
         # Update Animation Frame
         if abs(x_speed) > 0.5:
-            frame_index += frame_speed
-            if frame_index >= len(run_animation):
-                frame_index = 0
+            player_frame_index += player_frame_speed
+            if player_frame_index >= len(run_animation):
+                player_frame_index = 0
         else:
-            frame_index = 0  # Reset to first frame when not moving
+            player_frame_index = 0  # Reset to first frame when not moving
 
         # Calculate Player Draw Position relative to Camera
-        current_image = run_animation[int(frame_index)]
+        current_image = run_animation[int(player_frame_index)]
         player_draw_rect = current_image.get_rect()
-        player_draw_rect.midbottom = (int(player_rect.centerx - scroll_x), int(player_rect.bottom - scroll_y))
+
+        # Center the image on the player's position
+        true_center_x = x_pos + (player_rect.width / 2)
+        true_bottom_y = y_pos + player_rect.height
+
+        # Subtract camera scroll, then round to avoid subpixel rendering issues
+        screen_x = round(true_center_x - scroll_x)
+        screen_y = round(true_bottom_y - scroll_y)
+
+        player_draw_rect.midbottom = (screen_x, screen_y)
 
         # Flip the image based on facing direction
         if not facing_right:
@@ -246,14 +233,19 @@ while running:
         screen.blit(current_image, player_draw_rect)
 
         # Draw coins relative to Camera
-        coin_image = coin_animation[int((pygame.time.get_ticks() / 300) % len(coin_animation))]
+        coin_frame_index += coin_frame_speed
+        if coin_frame_index >= len(coin_animation):
+            coin_frame_index = 0
+        coin_image = coin_animation[int(coin_frame_index)]
         for coin in coins:
-            draw_rect = pygame.Rect(int(coin.x - scroll_x), int(coin.y - scroll_y), coin.width, coin.height)
+            draw_x = round(coin.x - scroll_x)
+            draw_y = round(coin.y - scroll_y)
+            draw_rect = pygame.Rect(draw_x, draw_y, coin.width, coin.height)
             screen.blit(coin_image, draw_rect)
-            # pygame.draw.ellipse(screen, (255, 223, 0), draw_rect)
 
         pygame.display.flip()
         clock.tick(60)
+        pygame.display.set_caption(f"Platformer Run - FPS: {clock.get_fps():.2f}")
     
     elif game_state == 'GAME_OVER':
         # Clear Screen
