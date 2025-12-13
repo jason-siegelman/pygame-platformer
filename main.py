@@ -29,8 +29,8 @@ scroll_y = 0
 # --- Animations ---
 
 # Player Run Animation
-player_frame_speed = 0.1
 player_frame_index = 0
+player_frame_speed = 0.1
 player_run_files = ['character_beige_walk_b.png', 'character_beige_walk_a.png']
 run_animation = load_image(BASE_CHAR_PATH, player_run_files)
 
@@ -40,12 +40,19 @@ coin_frame_speed = 0.1
 coin_image_files = ['coin_gold.png', 'coin_gold_side.png']
 coin_animation = load_image(BASE_TILE_PATH, coin_image_files, (TILE_SIZE, TILE_SIZE))
 
-# Initialize Walls and Coins
+# Enemy Image Animation
+enemy_frame_index = 0
+enemy_frame_speed = 0.1
+enemy_image_files = ['barnacle_attack_a.png', 'barnacle_attack_b.png']
+enemy_animation = load_image(BASE_ENEMY_PATH, enemy_image_files, (TILE_SIZE, TILE_SIZE))
+
+# Initialize Walls, Coins and Enemies Lists
 walls = []
 coins = []
+enemies = []
 
 def reset_level():
-    global score, game_state, player_rect, x_pos, y_pos, x_speed, y_speed, x_accel, can_jump, facing_right, scroll_x, scroll_y, coins
+    global score, game_state, player_rect, x_pos, y_pos, x_speed, y_speed, x_accel, can_jump, facing_right, scroll_x, scroll_y, walls, coins, enemies
 
     # --- Game Variables ---
     score = 0
@@ -68,6 +75,7 @@ def reset_level():
     # --- Level Setup ---
     walls.clear()
     coins.clear()
+    enemies.clear()
 
     # Parse level map to create walls and coins
     for row_index, row in enumerate(LEVEL_MAP): # Iterate through each row
@@ -87,6 +95,14 @@ def reset_level():
                 player_rect.y = y
                 x_pos = float(player_rect.x)
                 y_pos = float(player_rect.y)
+            elif tile == 'E':
+                # Create a dictionary for the enemy
+                new_enemy = {
+                    'rect': pygame.Rect(x, y, TILE_SIZE, TILE_SIZE),
+                    'speed': 2
+                }
+                enemies.append(new_enemy)
+
 
 reset_level()
 
@@ -114,7 +130,7 @@ while running:
             y_speed = JUMP_STRENGTH
             can_jump = False
 
-        # 3. Physics Engine
+        # 3. Player Movement and Collision
         
         # Movement - X Axis
         x_speed += x_accel
@@ -169,7 +185,26 @@ while running:
                 score += 1
                 print(f"Score: {score}")
 
-        # 4. Camera Logic
+        # 4. Enemy Movement and Collision
+
+        for enemy in enemies:
+            # Move the enemy
+            enemy['rect'].x += enemy['speed']
+
+            # Reverse direction on wall collision
+            for wall_rect in walls:
+                if enemy['rect'].colliderect(wall_rect):
+                    enemy['speed'] *= -1
+                    if enemy['speed'] > 0:
+                        enemy['rect'].left = wall_rect.right
+                    else:
+                        enemy['rect'].right = wall_rect.left
+            
+            # Check collision with player
+            if player_rect.colliderect(enemy['rect']):
+                game_state = 'GAME_OVER'
+
+        # 5. Camera Logic
 
         # Center the camera on the player
         # (Goal: Player Center - Screen Center)
@@ -187,21 +222,28 @@ while running:
         if abs(target_y - scroll_y) < 1:
             scroll_y = target_y
 
-        # 5. Drawing
+        # 6. Drawing
 
         # Clear Screen
         screen.fill((30, 30, 30))
         
         # Draw Walls relative to Camera
-        # for wall in walls:
-        #     # Create a temp rect for drawing only
-        #     draw_rect = pygame.Rect(int(wall.x - scroll_x), int(wall.y - scroll_y), wall.width, wall.height)
-        #     pygame.draw.rect(screen, (100, 200, 100), draw_rect)
         for wall in walls:
             draw_x = round(wall.x - scroll_x)
             draw_y = round(wall.y - scroll_y)
             draw_rect = pygame.Rect(draw_x, draw_y, wall.width, wall.height)
             pygame.draw.rect(screen, COLOR_WALL, draw_rect)
+
+        # Draw Enemies relative to Camera
+        enemy_frame_index += enemy_frame_speed
+        if enemy_frame_index >= len(enemy_animation):
+            enemy_frame_index = 0
+        enemy_image = enemy_animation[int(enemy_frame_index)]
+        for enemy in enemies:
+            draw_x = round(enemy['rect'].x - scroll_x)
+            draw_y = round(enemy['rect'].y - scroll_y)
+            draw_rect = pygame.Rect(draw_x, draw_y, TILE_SIZE, TILE_SIZE)
+            screen.blit(enemy_image, draw_rect)
 
         # Update Animation Frame
         if abs(x_speed) > 0.5:

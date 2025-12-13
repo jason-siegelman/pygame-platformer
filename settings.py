@@ -17,6 +17,7 @@ COLOR_WALL = (100, 200, 100)
 # --- Asset Paths ---
 BASE_CHAR_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Characters/Default/'
 BASE_TILE_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Tiles/Default/'
+BASE_ENEMY_PATH = 'assets/kenney_new-platformer-pack-1.1/Sprites/Enemies/Default/'
 
 # --- Level Design ---
 # Each character represents a 50x50 tile
@@ -32,6 +33,6 @@ LEVEL_MAP = [
     "W            WWW                               W",
     "W                                              W",
     "W      W            C     W          W         W",
-    "W     WW           WWW    WW        WW         W",
+    "W     WW           WWW    WW    E   WW         W",
     "WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW",
 ]
